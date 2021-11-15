@@ -144,11 +144,15 @@ PCONSOLE_API_MSG ApiSorter::ConsoleDispatchRequest(_Inout_ PCONSOLE_API_MSG Mess
     ULONG const LayerNumber = (Message->msgHeader.ApiNumber >> 24) - 1;
     ULONG const ApiNumber = Message->msgHeader.ApiNumber & 0xffffff;
 
-    NTSTATUS Status;
+    NTSTATUS Status = S_OK;
+    const auto cleanup = wil::scope_exit([&]() {
+        Message->SetReplyStatus(Status);
+    });
+
     if ((LayerNumber >= RTL_NUMBER_OF(ConsoleApiLayerTable)) || (ApiNumber >= ConsoleApiLayerTable[LayerNumber].Count))
     {
         Status = STATUS_ILLEGAL_FUNCTION;
-        goto Complete;
+        return Message;
     }
 
     CONSOLE_API_DESCRIPTOR const* Descriptor = &ConsoleApiLayerTable[LayerNumber].Descriptor[ApiNumber];
@@ -160,7 +164,7 @@ PCONSOLE_API_MSG ApiSorter::ConsoleDispatchRequest(_Inout_ PCONSOLE_API_MSG Mess
         (Message->msgHeader.ApiDescriptorSize < Descriptor->RequiredSize))
     {
         Status = STATUS_ILLEGAL_FUNCTION;
-        goto Complete;
+        return Message;
     }
 
     BOOL ReplyPending = FALSE;
@@ -184,14 +188,8 @@ PCONSOLE_API_MSG ApiSorter::ConsoleDispatchRequest(_Inout_ PCONSOLE_API_MSG Mess
 
     if (!ReplyPending)
     {
-        goto Complete;
+        return Message;
     }
 
     return nullptr;
-
-Complete:
-
-    Message->SetReplyStatus(Status);
-
-    return Message;
 }

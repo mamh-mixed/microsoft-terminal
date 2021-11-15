@@ -45,12 +45,12 @@ void InitSideBySide(_Out_writes_(ScratchBufferSize) PWSTR ScratchBuffer, __range
     if (dwModuleFileNameLength == 0)
     {
         RIPMSG1(RIP_ERROR, "GetModuleFileNameW failed %d.\n", GetLastError());
-        goto Exit;
+        ScratchBuffer[0] = 0;
     }
     if (ScratchBuffer[ScratchBufferSize - 2] != 0)
     {
         RIPMSG1(RIP_ERROR, "GetModuleFileNameW requires more than ScratchBufferSize(%d) - 1.\n", ScratchBufferSize);
-        goto Exit;
+        ScratchBuffer[0] = 0;
     }
 
     // We get an NT path from the Win32 api. Fix it to be Win32.
@@ -83,11 +83,8 @@ void InitSideBySide(_Out_writes_(ScratchBufferSize) PWSTR ScratchBuffer, __range
         {
             RIPMSG1(RIP_WARNING, "InitSideBySide failed create an activation context. Error: %d\r\n", error);
         }
-        goto Exit;
+        ScratchBuffer[0] = 0;
     }
-
-Exit:
-    ScratchBuffer[0] = 0;
 }
 
 // Routine Description:
