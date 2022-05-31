@@ -114,6 +114,7 @@ SCREEN_INFORMATION::~SCREEN_INFORMATION()
         // Set up viewport
         pScreen->_viewport = Viewport::FromDimensions({ 0, 0 },
                                                       pScreen->_IsInPtyMode() ? coordScreenBufferSize : coordWindowSize);
+        assert(pScreen->_viewport.Top() < pScreen->_viewport.BottomInclusive());
         pScreen->UpdateBottom();
 
         // Set up text buffer
@@ -812,6 +813,7 @@ void SCREEN_INFORMATION::SetViewportSize(const COORD* const pcoordSize)
     {
         // Otherwise, just store the new position and go on.
         _viewport = Viewport::FromInclusive(NewWindow);
+        assert(_viewport.Top() < _viewport.BottomInclusive());
         Tracing::s_TraceWindowViewport(_viewport);
     }
 
@@ -1257,6 +1259,7 @@ void SCREEN_INFORMATION::_InternalSetViewportSize(const COORD* const pcoordSize,
     }
 
     _viewport = newViewport;
+    assert(_viewport.Top() < _viewport.BottomInclusive());
     Tracing::s_TraceWindowViewport(_viewport);
 
     // In Conpty mode, call TriggerScroll here without params. By not providing
@@ -2269,7 +2272,12 @@ void SCREEN_INFORMATION::SetViewport(const Viewport& newViewport,
 
     // do adjustments on a copy that's easily manipulated.
     auto srCorrected = newViewport.ToExclusive();
+    const auto coordScreenBufferSize = GetBufferSize().Dimensions();
 
+#if 0
+    // MSFT-33471786, GH#13193:
+    // newViewport's origin isn't necessarily (0,0).
+    // -> Shift coordScreenBufferSize so that we can compare it below.
     if (srCorrected.Left < 0)
     {
         srCorrected.Right -= srCorrected.Left;
@@ -2280,8 +2288,27 @@ void SCREEN_INFORMATION::SetViewport(const Viewport& newViewport,
         srCorrected.Bottom -= srCorrected.Top;
         srCorrected.Top = 0;
     }
-
-    const auto coordScreenBufferSize = GetBufferSize().Dimensions();
+    if (srCorrected.Right > coordScreenBufferSize.X)
+    {
+        srCorrected.Left = srCorrected.Right - coordScreenBufferSize.X;
+        srCorrected.Right = coordScreenBufferSize.X;
+    }
+    if (srCorrected.Bottom > coordScreenBufferSize.Y)
+    {
+        srCorrected.Top = srCorrected.Bottom - coordScreenBufferSize.Y;
+        srCorrected.Bottom = coordScreenBufferSize.Y;
+    }
+#else
+    if (srCorrected.Left < 0)
+    {
+        srCorrected.Right -= srCorrected.Left;
+        srCorrected.Left = 0;
+    }
+    if (srCorrected.Top < 0)
+    {
+        srCorrected.Bottom -= srCorrected.Top;
+        srCorrected.Top = 0;
+    }
     if (srCorrected.Right > coordScreenBufferSize.X)
     {
         srCorrected.Right = coordScreenBufferSize.X;
@@ -2290,8 +2317,12 @@ void SCREEN_INFORMATION::SetViewport(const Viewport& newViewport,
     {
         srCorrected.Bottom = coordScreenBufferSize.Y;
     }
+#endif
+
 
     _viewport = Viewport::FromExclusive(srCorrected);
+    assert(_viewport.Top() < _viewport.BottomInclusive());
+
     if (updateBottom)
     {
         UpdateBottom();
