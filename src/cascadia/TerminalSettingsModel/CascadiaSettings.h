@@ -113,6 +113,7 @@ namespace winrt::Microsoft::Terminal::Settings::Model::implementation
         explicit CascadiaSettings(SettingsLoader&& loader);
 
         // user settings
+        winrt::hstring Hash() const noexcept;
         Model::CascadiaSettings Copy() const;
         Model::GlobalAppSettings GlobalSettings() const;
         winrt::Windows::Foundation::Collections::IObservableVector<Model::Profile> AllProfiles() const noexcept;
@@ -162,6 +163,7 @@ namespace winrt::Microsoft::Terminal::Settings::Model::implementation
         void _validateThemeExists();
 
         // user settings
+        winrt::hstring _hash;
         winrt::com_ptr<implementation::GlobalAppSettings> _globals = winrt::make_self<implementation::GlobalAppSettings>();
         winrt::com_ptr<implementation::Profile> _baseLayerProfile = winrt::make_self<implementation::Profile>();
         winrt::Windows::Foundation::Collections::IObservableVector<Model::Profile> _allProfiles = winrt::single_threaded_observable_vector<Model::Profile>();

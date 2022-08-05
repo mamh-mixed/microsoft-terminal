@@ -107,7 +107,7 @@ namespace winrt::Microsoft::Terminal::Settings::Model
     }
     // Tries to read a file somewhat atomically without locking it.
     // Strips the UTF8 BOM if it exists.
-    std::string ReadUTF8File(const std::filesystem::path& path, const bool elevatedOnly)
+    std::string ReadUTF8File(const std::filesystem::path& path, const bool elevatedOnly, FILETIME* lastWriteTime)
     {
         // From some casual observations we can determine that:
         // * ReadFile() always returns the requested amount of data (unless the file is smaller)
@@ -179,6 +179,11 @@ namespace winrt::Microsoft::Terminal::Settings::Model
                 buffer.erase(0, Utf8Bom.size());
             }
 
+            if (lastWriteTime)
+            {
+                THROW_IF_WIN32_BOOL_FALSE(GetFileTime(file.get(), nullptr, nullptr, lastWriteTime));
+            }
+
             return buffer;
         }
 
@@ -186,11 +191,11 @@ namespace winrt::Microsoft::Terminal::Settings::Model
     }
 
     // Same as ReadUTF8File, but returns an empty optional, if the file couldn't be opened.
-    std::optional<std::string> ReadUTF8FileIfExists(const std::filesystem::path& path, const bool elevatedOnly)
+    std::optional<std::string> ReadUTF8FileIfExists(const std::filesystem::path& path, const bool elevatedOnly, FILETIME* lastWriteTime)
     {
         try
         {
-            return { ReadUTF8File(path, elevatedOnly) };
+            return { ReadUTF8File(path, elevatedOnly, lastWriteTime) };
         }
         catch (const wil::ResultException& exception)
         {

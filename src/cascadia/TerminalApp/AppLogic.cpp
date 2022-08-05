@@ -886,8 +886,27 @@ namespace winrt::TerminalApp::implementation
 
         // Register for directory change notification.
         _RegisterSettingsChange();
+        _ProcessLazySettingsChanges();
+    }
+
+    // Call this function after loading your _settings.
+    // It handles any updates which should only occur if the settings file changed.
+    void AppLogic::_ProcessLazySettingsChanges()
+    {
+        const auto hash = _settings.Hash();
+        const auto applicationState = ApplicationState::SharedInstance();
+        const auto cachedHash = applicationState.SettingsHash();
+
+        // The hash might be empty if LoadAll() failed and we're dealing with the defaults settings object.
+        // In that case we can just wait until the user fixed their settings or CascadiaSettings fixed
+        // itself and either will soon trigger a settings reload.
+        if (hash.empty() || hash == cachedHash)
+        {
+            return;
+        }
 
         Jumplist::UpdateJumplist(_settings);
+        applicationState.SettingsHash(hash);
     }
 
     // Method Description:
@@ -1058,8 +1077,7 @@ namespace winrt::TerminalApp::implementation
         _ApplyLanguageSettingChange();
         _RefreshThemeRoutine();
         _ApplyStartupTaskStateChange();
-
-        Jumplist::UpdateJumplist(_settings);
+        _ProcessLazySettingsChanges();
 
         _SettingsChangedHandlers(*this, nullptr);
     }

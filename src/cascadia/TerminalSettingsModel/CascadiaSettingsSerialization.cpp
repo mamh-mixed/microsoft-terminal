@@ -793,7 +793,8 @@ void SettingsLoader::_executeGenerator(const IDynamicProfileGenerator& generator
 Model::CascadiaSettings CascadiaSettings::LoadAll()
 try
 {
-    auto settingsString = ReadUTF8FileIfExists(_settingsPath()).value_or(std::string{});
+    FILETIME lastWriteTime{};
+    auto settingsString = ReadUTF8FileIfExists(_settingsPath(), false, &lastWriteTime).value_or(std::string{});
     auto firstTimeSetup = settingsString.empty();
 
     // If it's the firstTimeSetup and a preview build, then try to
@@ -873,6 +874,16 @@ try
             LOG_CAUGHT_EXCEPTION();
             settings->_warnings.Append(SettingsLoadWarnings::FailedToWriteToSettings);
         }
+    }
+    else
+    {
+        // There's no need to calculate a hash if mustWriteToDisk is true, because that will update
+        // settings.json on disk, which will trigger a file write event and cause AppLogic to call
+        // LoadAll() again. We'll then reach this point, because mustWriteToDisk will be false.
+        const ULARGE_INTEGER fileTime{ lastWriteTime.dwLowDateTime, lastWriteTime.dwHighDateTime };
+        const auto fileHash = til::hash(settingsString);
+        const auto hash = fmt::format(L"{:016x}-{:016x}", fileHash, fileTime.QuadPart);
+        settings->_hash = winrt::hstring{ hash };
     }
 
     return *settings;
