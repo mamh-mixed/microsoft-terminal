@@ -958,6 +958,21 @@ std::wstring_view ROW::GetText(til::CoordType columnBegin, til::CoordType column
     return { _chars.data() + chBeg, chEnd - chBeg };
 }
 
+std::pair<til::CoordType, til::CoordType> ROW::GetColumnSpanAtCharOffset(uint16_t offset) const noexcept
+{
+    const auto beg = _charOffsets.begin();
+    const auto end = _charOffsets.end();
+    auto it = beg + 1;
+
+    for (; (*it & CharOffsetsMask) <= offset; ++it)
+    {
+    }
+
+    const auto endColumn = gsl::narrow_cast<uint16_t>(it - beg);
+    const auto begColumn = _adjustBackward(endColumn - 1);
+    return { begColumn, endColumn };
+}
+
 DelimiterClass ROW::DelimiterClassAt(til::CoordType column, const std::wstring_view& wordDelimiters) const noexcept
 {
     const auto col = _clampedColumn(column);
