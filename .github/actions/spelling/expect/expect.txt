@@ -597,7 +597,6 @@ ffd
 FFDE
 FFFD
 FFFDb
-FFrom
 fgbg
 FGCOLOR
 FGHIJ
@@ -1165,7 +1164,6 @@ NOMINMAX
 NOMOVE
 NONALERT
 nonbreaking
-noncharacter
 nonclient
 NONINFRINGEMENT
 NONPREROTATED
@@ -1526,7 +1524,6 @@ rgw
 RIGHTALIGN
 RIGHTBUTTON
 riid
-ris
 RIS
 roadmap
 robomac
@@ -1889,7 +1886,6 @@ UPDATEDISPLAY
 UPDOWN
 UPKEY
 upss
-UPSS
 uregex
 URegular
 usebackq
