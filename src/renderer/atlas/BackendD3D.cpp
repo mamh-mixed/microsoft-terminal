@@ -733,7 +733,7 @@ void BackendD3D::_d2dEndDrawing()
     }
 }
 
-void BackendD3D::_resetGlyphAtlas(const RenderingPayload& p)
+void BackendD3D::_resetGlyphAtlas(const RenderingPayload& p, u32 minWidth, u32 minHeight)
 {
     // The index returned by _BitScanReverse is undefined when the input is 0. We can simultaneously guard
     // against that and avoid unreasonably small textures, by clamping the min. texture size to `minArea`.
@@ -761,11 +761,24 @@ void BackendD3D::_resetGlyphAtlas(const RenderingPayload& p)
     // This block of code calculates the size of a power-of-2 texture that has an area larger than the given `area`.
     // For instance, for an area of 985x1946 = 1916810 it would result in a u/v of 2048x1024 (area = 2097152).
     // This has 2 benefits: GPUs like power-of-2 textures and it ensures that we don't resize the texture
-    // every time you resize the window by a pixel. Instead it only grows/shrinks by a factor of 2.
+    // every time you resize the window by a pixel. Instead, it only grows/shrinks by a factor of 2.
     unsigned long index;
     _BitScanReverse(&index, area - 1);
-    const auto u = static_cast<u16>(1u << ((index + 2) / 2));
-    const auto v = static_cast<u16>(1u << ((index + 1) / 2));
+    auto u = static_cast<u16>(1u << ((index + 2) / 2));
+    auto v = static_cast<u16>(1u << ((index + 1) / 2));
+
+    // However, if we're asked for a specific minimum size, round up the u/v to the next power of 2 of the given size.
+    // Because u/v cannot ever be less than sqrt(minArea), the _BitScanReverse() calls below cannot fail.
+    if (u < minWidth)
+    {
+        _BitScanReverse(&index, minWidth - 1);
+        u = 1u << (index + 1);
+    }
+    if (v < minHeight)
+    {
+        _BitScanReverse(&index, minHeight - 1);
+        v = 1u << (index + 1);
+    }
 
     if (u != _rectPacker.width || v != _rectPacker.height)
     {
@@ -1080,7 +1093,7 @@ void BackendD3D::_drawText(RenderingPayload& p)
 {
     if (_fontChangedResetGlyphAtlas)
     {
-        _resetGlyphAtlas(p);
+        _resetGlyphAtlas(p, 0, 0);
     }
 
     til::CoordType dirtyTop = til::CoordTypeMax;
@@ -1179,6 +1192,11 @@ void BackendD3D::_drawText(RenderingPayload& p)
         if (!row->gridLineRanges.empty())
         {
             _drawGridlines(p, y);
+        }
+
+        if (!row->bitmaps.empty())
+        {
+            _drawBitmaps(p, y);
         }
 
         if (p.invalidatedRows.contains(y))
@@ -1677,7 +1695,7 @@ void BackendD3D::_drawGlyphAtlasAllocate(const RenderingPayload& p, stbrp_rect& 
 
     _d2dEndDrawing();
     _flushQuads(p);
-    _resetGlyphAtlas(p);
+    _resetGlyphAtlas(p, rect.w, rect.h);
 
     if (!stbrp_pack_rects(&_rectPacker, &rect, 1))
     {
@@ -1840,6 +1858,48 @@ void BackendD3D::_drawGridlines(const RenderingPayload& p, u16 y)
                 appendHorizontalLine(r, pos, ShadingType::SolidLine, r.underlineColor);
             }
         }
+    }
+}
+
+void BackendD3D::_drawBitmaps(const RenderingPayload& p, u16 y)
+{
+    _d2dBeginDrawing();
+
+    for (const auto& b : p.rows[y]->bitmaps)
+    {
+        const D2D1_SIZE_U size{
+            static_cast<UINT32>(b.size.x),
+            static_cast<UINT32>(b.size.y),
+        };
+        const D2D1_BITMAP_PROPERTIES bitmapProperties{
+            .pixelFormat = { DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_PREMULTIPLIED },
+            .dpiX = static_cast<f32>(p.s->font->dpi),
+            .dpiY = static_cast<f32>(p.s->font->dpi),
+        };
+        wil::com_ptr<ID2D1Bitmap> bitmap;
+        THROW_IF_FAILED(_d2dRenderTarget->CreateBitmap(size, b.pixels.data(), static_cast<UINT32>(b.size.x) * 4, &bitmapProperties, bitmap.addressof()));
+        
+        stbrp_rect rect{
+            .w = b.target.right - b.target.left,
+            .h = b.target.bottom - b.target.top,
+        };
+        _drawGlyphAtlasAllocate(p, rect);
+
+        D2D1_RECT_F rectF{
+            static_cast<f32>(rect.x),
+            static_cast<f32>(rect.y),
+            static_cast<f32>(rect.x + rect.w),
+            static_cast<f32>(rect.y + rect.h),
+        };
+        _d2dRenderTarget->DrawBitmap(bitmap.get(), &rectF, 1, D2D1_BITMAP_INTERPOLATION_MODE_LINEAR);
+
+        _appendQuad() = {
+            .shadingType = static_cast<u16>(ShadingType::TextPassthrough),
+            .renditionScale = { 1, 1 },
+            .position = { static_cast<i16>(b.target.left), static_cast<i16>(b.target.top) },
+            .size = { static_cast<u16>(rect.w), static_cast<u16>(rect.h) },
+            .texcoord = { static_cast<u16>(rect.x), static_cast<u16>(rect.y) },
+        };
     }
 }
 

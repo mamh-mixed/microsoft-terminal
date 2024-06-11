@@ -202,7 +202,7 @@ namespace Microsoft::Console::Render::Atlas
         void _debugDumpRenderTarget(const RenderingPayload& p);
         void _d2dBeginDrawing() noexcept;
         void _d2dEndDrawing();
-        ATLAS_ATTR_COLD void _resetGlyphAtlas(const RenderingPayload& p);
+        ATLAS_ATTR_COLD void _resetGlyphAtlas(const RenderingPayload& p, u32 minWidth, u32 minHeight);
         ATLAS_ATTR_COLD void _resizeGlyphAtlas(const RenderingPayload& p, u16 u, u16 v);
         static bool _checkMacTypeVersion(const RenderingPayload& p);
         QuadInstance& _getLastQuad() noexcept;
@@ -220,7 +220,8 @@ namespace Microsoft::Console::Render::Atlas
         void _drawGlyphAtlasAllocate(const RenderingPayload& p, stbrp_rect& rect);
         static AtlasGlyphEntry* _drawGlyphAllocateEntry(const ShapedRow& row, AtlasFontFaceEntry& fontFaceEntry, u32 glyphIndex);
         static void _splitDoubleHeightGlyph(const RenderingPayload& p, const ShapedRow& row, AtlasFontFaceEntry& fontFaceEntry, AtlasGlyphEntry* glyphEntry);
-        void _drawGridlines(const RenderingPayload& p, u16 y);
+        ATLAS_ATTR_COLD void _drawGridlines(const RenderingPayload& p, u16 y);
+        ATLAS_ATTR_COLD void _drawBitmaps(const RenderingPayload& p, u16 y);
         void _drawCursorBackground(const RenderingPayload& p);
         ATLAS_ATTR_COLD void _drawCursorForeground();
         ATLAS_ATTR_COLD size_t _drawCursorForegroundSlowPath(const CursorRect& c, size_t offset);

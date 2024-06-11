@@ -450,6 +450,13 @@ namespace Microsoft::Console::Render::Atlas
         u16 to = 0;
     };
 
+    struct Bitmap
+    {
+        Buffer<u32, 32> pixels;
+        i32x2 size{};
+        i32r target{};
+    };
+
     struct ShapedRow
     {
         void Clear(u16 y, u16 cellHeight) noexcept
@@ -460,6 +467,7 @@ namespace Microsoft::Console::Render::Atlas
             glyphOffsets.clear();
             colors.clear();
             gridLineRanges.clear();
+            bitmaps.clear();
             lineRendition = LineRendition::SingleWidth;
             selectionFrom = 0;
             selectionTo = 0;
@@ -480,6 +488,7 @@ namespace Microsoft::Console::Render::Atlas
         std::vector<u32> colors;
 
         std::vector<GridLineRange> gridLineRanges;
+        std::vector<Bitmap> bitmaps;
         LineRendition lineRendition = LineRendition::SingleWidth;
         u16 selectionFrom = 0;
         u16 selectionTo = 0;

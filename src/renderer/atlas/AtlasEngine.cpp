@@ -520,10 +520,27 @@ try
 }
 CATCH_RETURN()
 
-[[nodiscard]] HRESULT AtlasEngine::PaintImageSlice(const ImageSlice& /*imageSlice*/, const til::CoordType /*targetRow*/, const til::CoordType /*viewportLeft*/) noexcept
+[[nodiscard]] HRESULT AtlasEngine::PaintImageSlice(const ImageSlice& imageSlice, const til::CoordType targetRow, const til::CoordType viewportLeft) noexcept
+try
 {
-    return S_FALSE;
+    const auto& imagePixels = imageSlice.Pixels();
+    const auto srcCellSize = imageSlice.CellSize();
+    const auto dstCellSize = _p.s->font->cellSize;
+    const auto srcWidth = imageSlice.PixelWidth();
+    const auto srcHeight = srcCellSize.height;
+    const auto dstWidth = srcWidth * dstCellSize.x / srcCellSize.width;
+    const auto dstHeight = srcHeight * dstCellSize.y / srcCellSize.height;
+    const auto x = (imageSlice.ColumnOffset() - viewportLeft) * dstCellSize.x;
+    const auto y = targetRow * dstCellSize.y;
+
+    _p.rows[targetRow]->bitmaps.emplace_back(Bitmap{
+        .pixels = { reinterpret_cast<const u32*>(imagePixels.data()), imagePixels.size() },
+        .size = { srcWidth, srcHeight },
+        .target = { x, y, x + dstWidth, y + dstHeight },
+    });
+    return S_OK;
 }
+CATCH_RETURN()
 
 [[nodiscard]] HRESULT AtlasEngine::PaintSelection(const til::rect& rect) noexcept
 try

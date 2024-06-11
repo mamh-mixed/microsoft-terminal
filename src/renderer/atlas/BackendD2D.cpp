@@ -4,6 +4,7 @@
 #include "pch.h"
 #include "BackendD2D.h"
 
+#include <stb_rect_pack.h>
 #include <til/unicode.h>
 
 #if ATLAS_DEBUG_SHOW_DIRTY
@@ -285,6 +286,11 @@ void BackendD2D::_drawText(RenderingPayload& p)
         if (!row->gridLineRanges.empty())
         {
             _drawGridlineRow(p, row, y);
+        }
+
+        if (!row->bitmaps.empty())
+        {
+            _drawBitmaps(p, y);
         }
 
         if (row->lineRendition != LineRendition::SingleWidth)
@@ -746,6 +752,32 @@ void BackendD2D::_drawGridlineRow(const RenderingPayload& p, const ShapedRow* ro
                 appendHorizontalLine(r, pos, nullptr, r.underlineColor);
             }
         }
+    }
+}
+
+void BackendD2D::_drawBitmaps(const RenderingPayload& p, u16 y)
+{
+    for (const auto& b : p.rows[y]->bitmaps)
+    {
+        const D2D1_SIZE_U size{
+            static_cast<UINT32>(b.size.x),
+            static_cast<UINT32>(b.size.y),
+        };
+        const D2D1_BITMAP_PROPERTIES bitmapProperties{
+            .pixelFormat = { DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_PREMULTIPLIED },
+            .dpiX = static_cast<f32>(p.s->font->dpi),
+            .dpiY = static_cast<f32>(p.s->font->dpi),
+        };
+        wil::com_ptr<ID2D1Bitmap> bitmap;
+        THROW_IF_FAILED(_renderTarget->CreateBitmap(size, b.pixels.data(), static_cast<UINT32>(b.size.x) * 4, &bitmapProperties, bitmap.addressof()));
+
+        D2D1_RECT_F rectF{
+            static_cast<f32>(b.target.left),
+            static_cast<f32>(b.target.top),
+            static_cast<f32>(b.target.right),
+            static_cast<f32>(b.target.bottom),
+        };
+        _renderTarget->DrawBitmap(bitmap.get(), &rectF, 1, D2D1_BITMAP_INTERPOLATION_MODE_LINEAR);
     }
 }
 
