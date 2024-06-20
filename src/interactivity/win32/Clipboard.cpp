@@ -162,7 +162,7 @@ void Clipboard::StringPaste(_In_reads_(cchData) const wchar_t* const pData,
         auto inEvents = TextToKeyEvents(pData, cchData, vtInputMode && bracketedPasteMode);
         gci.pInputBuffer->Write(inEvents);
 
-        gci.GetActiveOutputBuffer().MakeCurrentCursorVisible();
+        gci.GetActiveOutputBuffer().SnapOnInput(0);
     }
     catch (...)
     {
