@@ -1555,7 +1555,27 @@ void SCREEN_INFORMATION::SnapOnInput(const WORD vkey)
 {
     if (IsInputKey(vkey))
     {
-        MakeCurrentCursorVisible();
+        const auto position = _textBuffer->GetCursor().GetPosition();
+        const auto virtualViewport = GetVirtualViewport();
+        const auto virtualTop = virtualViewport.Top();
+        const auto virtualBottom = virtualViewport.BottomInclusive();
+
+        auto left = _viewport.Left();
+        left = std::min(left, position.x);
+        left = std::max(left, position.x - _viewport.Width() + 1);
+
+        // If the cursor is within the VT page range, snap to it.
+        // The cursor can be outside of that range, because unfortunately not all
+        // parts of conhost keep _virtualBottom and the cursor position in sync.
+        til::CoordType top = virtualTop;
+        if (position.y < virtualTop || position.y > virtualBottom)
+        {
+            top = _viewport.Top();
+            top = std::min(top, position.y);
+            top = std::max(top, position.y - _viewport.Height() + 1);
+        }
+
+        LOG_IF_FAILED(SetViewportOrigin(true, { left, top }, false));
     }
 }
 
