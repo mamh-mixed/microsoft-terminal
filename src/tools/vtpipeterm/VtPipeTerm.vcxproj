@@ -11,11 +11,12 @@
   <Import Project="..\..\common.build.pre.props" />
   <Import Project="..\..\common.nugetversions.props" />
   <ItemGroup>
-    <ClInclude Include="VtConsole.hpp" />
+    <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="VtConsole.cpp" />
+    <ProjectReference Include="..\..\winconpty\lib\winconptylib.vcxproj">
+      <Project>{58a03bb2-df5a-4b66-91a0-7ef3ba01269a}</Project>
+    </ProjectReference>
   </ItemGroup>
   <ItemDefinitionGroup>
     <ClCompile>
