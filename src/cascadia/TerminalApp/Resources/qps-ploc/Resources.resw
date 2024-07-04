@@ -288,6 +288,15 @@
   <data name="CmdCommandArgDesc" xml:space="preserve">
     <value>Åŉ ǿртíоñαŀ ċοmмäηď, ẁίŧћ ãŗĝūměŉтş, ţô вέ šρªẃйèđ įņ ťђė πεẁ ŧав ŏŗ рªņε !!! !!! !!! !!! !!! !!! !!! </value>
   </data>
+  <data name="SaveSnippetDesc" xml:space="preserve">
+    <value>Ѕäνê ςòmмàπδ ĺіⁿę åѕ ΐирμŧ άстĭŏñ !!! !!! !!! </value>
+  </data>
+  <data name="SaveSnippetArgDesc" xml:space="preserve">
+    <value>Ǻή òφťΐόπăℓ άѓğŭm℮иţ !!! !!!</value>
+  </data>
+  <data name="KeyChordArgDesc" xml:space="preserve">
+    <value>Åň øρτīõŉдŀ àŗġųm℮иť !!! !!!</value>
+  </data>
   <data name="CmdFocusTabDesc" xml:space="preserve">
     <value>Μòνê ƒöčµѕ ŧθ ãņøτнёř τåъ !!! !!! !</value>
   </data>
@@ -897,5 +906,11 @@
   </data>
   <data name="RestartConnectionToolTip" xml:space="preserve">
     <value>Γėşťáгţ ŧħ℮ ãčтĩνέ ρăйё сǿηńëςтιóņ !!! !!! !!! !</value>
+  </data>
+  <data name="ActionSavedToast.Title" xml:space="preserve">
+    <value>Α¢τΐόń ŝâνеð !!! </value>
+  </data>
+  <data name="ActionSaveFailedToast.Title" xml:space="preserve">
+    <value>Аčτĩóň ѕáνē ƒªĩłęδ !!! !!</value>
   </data>
 </root>
