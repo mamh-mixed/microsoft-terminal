@@ -335,6 +335,7 @@ namespace winrt::Microsoft::Terminal::Control::implementation
 
         // Other stuff.
         winrt::Windows::System::DispatcherQueue _dispatcher{ nullptr };
+        winrt::com_ptr<ControlSettings> _settings{ nullptr };
         til::point _contextMenuBufferPosition{ 0, 0 };
         Windows::Foundation::Collections::IVector<hstring> _cachedQuickFixes{ nullptr };
         ::Search _searcher;
@@ -352,19 +353,19 @@ namespace winrt::Microsoft::Terminal::Control::implementation
         // I recommend reading the following paragraphs in reverse order.
         // ----------------------------------------------------------------------------------------
 
-        // ↑ Prevent further calls into `this` from the rendering code.
-        //   As `_renderer` has a dependency on `_renderEngine` (through a raw pointer)
-        //   we must destroy `_renderer` first, and then `_renderEngine`.
-        std::unique_ptr<::Microsoft::Console::Render::Atlas::AtlasEngine> _renderEngine{ nullptr };
-        std::unique_ptr<::Microsoft::Console::Render::Renderer> _renderer{ nullptr };
-
-        // ↑ Now that `_shared->outputIdle` is done, we can destroy the terminal.
-        //   Since `_terminal` takes a dependency on `_renderer`, we must destroy it first.
-        std::shared_ptr<::Microsoft::Terminal::Core::Terminal> _terminal{ nullptr };
-        winrt::com_ptr<ControlSettings> _settings{ nullptr };
+        // ↑ This one is tricky - all of these are raw pointers:
+        //   1. _terminal depends on _renderer (for invalidations)
+        //   2. _renderer depends on _terminal (for IRenderData)
+        //      = circular dependency = huge architectural flaw (lifetime issues) = TODO
+        //   3. _renderer depends on _renderEngine (AtlasEngine)
+        // To solve the knot, we manually stop the renderer in the destructor,
+        // which breaks 2. We can proceed then proceed to break 1. and then 3.
+        std::unique_ptr<::Microsoft::Console::Render::Atlas::AtlasEngine> _renderEngine{ nullptr }; // 3.
+        std::unique_ptr<::Microsoft::Console::Render::Renderer> _renderer{ nullptr }; // 3.
+        std::shared_ptr<::Microsoft::Terminal::Core::Terminal> _terminal{ nullptr }; // 1.
 
         // ↑ MOST IMPORTANTLY: `_shared->outputIdle` takes dependency on the raw `this` pointer
-        //   (necessarily), our `_renderer`, runs async, and runs often. It must be destroyed first.
+        // (necessarily), our `_renderer`, runs async, and runs often. It must be destroyed first.
         til::shared_mutex<SharedState> _shared;
 
         // ↑ Prevent any more unnecessary `_shared->outputIdle` calls.

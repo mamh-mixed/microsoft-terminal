@@ -31,20 +31,6 @@ Renderer::Renderer(const RenderSettings& renderSettings, IRenderData* pData) :
     _renderSettings(renderSettings),
     _pData(pData)
 {
-    THROW_IF_FAILED(_pThread->Initialize(this));
-}
-
-// Routine Description:
-// - Destroys an instance of a renderer
-// Arguments:
-// - <none>
-// Return Value:
-// - <none>
-Renderer::~Renderer()
-{
-    // RenderThread blocks until it has shut down.
-    _destructing = true;
-    _pThread.reset();
 }
 
 IRenderData* Renderer::GetRenderData() const noexcept
@@ -63,11 +49,6 @@ IRenderData* Renderer::GetRenderData() const noexcept
     auto tries = maxRetriesForRenderEngine;
     while (tries > 0)
     {
-        if (_destructing)
-        {
-            return S_FALSE;
-        }
-
         // BODGY: Optimally we would want to retry per engine, but that causes different
         // problems (intermittent inconsistent states between text renderer and UIA output,
         // not being able to lock the cursor location, etc.).
@@ -82,7 +63,6 @@ IRenderData* Renderer::GetRenderData() const noexcept
         if (--tries == 0)
         {
             // Stop trying.
-            _pThread->DisablePainting();
             if (_pfnRendererEnteredErrorState)
             {
                 _pfnRendererEnteredErrorState();
@@ -294,19 +274,6 @@ void Renderer::TriggerRedrawAll(const bool backgroundChanged, const bool frameCh
     {
         _pfnFrameColorChanged();
     }
-}
-
-// Method Description:
-// - Called when the host is about to die, to give the renderer one last chance
-//      to paint before the host exits.
-// Arguments:
-// - <none>
-// Return Value:
-// - <none>
-void Renderer::TriggerTeardown() noexcept
-{
-    // We need to shut down the paint thread on teardown.
-    _pThread->WaitForPaintCompletionAndDisable(INFINITE);
 }
 
 // Routine Description:
@@ -640,13 +607,11 @@ void Renderer::EnablePainting()
 // - Waits for the current paint operation to complete, if any, up to the specified timeout.
 // - Resets an event in the render thread that precludes it from advancing, thus disabling rendering.
 // - If no paint operation is currently underway, returns immediately.
-// Arguments:
-// - dwTimeoutMs - Milliseconds to wait for the current paint operation to complete, if any (can be INFINITE).
 // Return Value:
 // - <none>
-void Renderer::WaitForPaintCompletionAndDisable(const DWORD dwTimeoutMs)
+void Renderer::WaitForPaintCompletionAndDisable()
 {
-    _pThread->WaitForPaintCompletionAndDisable(dwTimeoutMs);
+    _pThread->WaitForPaintCompletionAndDisable();
 }
 
 // Routine Description:
@@ -1426,14 +1391,6 @@ void Renderer::SetFrameColorChangedCallback(std::function<void()> pfn)
 void Renderer::SetRendererEnteredErrorStateCallback(std::function<void()> pfn)
 {
     _pfnRendererEnteredErrorState = std::move(pfn);
-}
-
-// Method Description:
-// - Attempts to restart the renderer.
-void Renderer::ResetErrorStateAndResume()
-{
-    // because we're not stateful (we could be in the future), all we want to do is reenable painting.
-    EnablePainting();
 }
 
 void Renderer::UpdateHyperlinkHoveredId(uint16_t id) noexcept

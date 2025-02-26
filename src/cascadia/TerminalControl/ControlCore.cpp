@@ -218,13 +218,16 @@ namespace winrt::Microsoft::Terminal::Control::implementation
     ControlCore::~ControlCore()
     {
         Close();
+
+        // See notes about the _renderer member in the header file.
+        _renderer->WaitForPaintCompletionAndDisable();
     }
 
     void ControlCore::Detach()
     {
         // Disable the renderer, so that it doesn't try to start any new frames
         // for our engines while we're not attached to anything.
-        _renderer->WaitForPaintCompletionAndDisable(INFINITE);
+        _renderer->WaitForPaintCompletionAndDisable();
 
         // Clear out any throttled funcs that we had wired up to run on this UI
         // thread. These will be recreated in _setupDispatcherAndCallbacks, when
@@ -409,6 +412,7 @@ namespace winrt::Microsoft::Terminal::Control::implementation
     {
         if (_initializedTerminal.load(std::memory_order_relaxed))
         {
+            // The lock must be held, because it calls into IRenderData which is shared state.
             const auto lock = _terminal->LockForWriting();
             _renderer->EnablePainting();
         }
@@ -1936,8 +1940,9 @@ namespace winrt::Microsoft::Terminal::Control::implementation
 
     void ControlCore::ResumeRendering()
     {
+        // The lock must be held, because it calls into IRenderData which is shared state.
         const auto lock = _terminal->LockForWriting();
-        _renderer->ResetErrorStateAndResume();
+        _renderer->EnablePainting();
     }
 
     bool ControlCore::IsVtMouseModeEnabled() const
