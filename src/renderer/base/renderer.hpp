@@ -118,7 +118,7 @@ namespace Microsoft::Console::Render
         uint16_t _hyperlinkHoveredId = 0;
         std::optional<interval_tree::IntervalTree<til::point, size_t>::interval> _hoveredInterval;
         Microsoft::Console::Types::Viewport _viewport;
-        CursorOptions _currentCursorOptions;
+        CursorOptions _currentCursorOptions{};
         std::optional<CompositionCache> _compositionCache;
         std::vector<Cluster> _clusterBuffer;
         std::function<void()> _pfnBackgroundColorChanged;
@@ -132,6 +132,6 @@ namespace Microsoft::Console::Render
 
         // Ordered last, so that it gets destroyed first.
         // This ensures that the render thread stops accessing us.
-        std::unique_ptr<RenderThread> _pThread = std::make_unique<RenderThread>(this);
+        RenderThread _thread{ this };
     };
 }

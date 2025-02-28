@@ -178,12 +178,8 @@ CATCH_RETURN()
 
 void Renderer::NotifyPaintFrame() noexcept
 {
-    // If we're running in the unittests, we might not have a render thread.
-    if (_pThread)
-    {
-        // The thread will provide throttling for us.
-        _pThread->NotifyPaint();
-    }
+    // The thread will provide throttling for us.
+    _thread.NotifyPaint();
 }
 
 // Routine Description:
@@ -595,12 +591,7 @@ void Renderer::EnablePainting()
     // When the renderer is constructed, the initial viewport won't be available yet,
     // but once EnablePainting is called it should be safe to retrieve.
     _viewport = _pData->GetViewport();
-
-    // When running the unit tests, we may be using a render without a render thread.
-    if (_pThread)
-    {
-        _pThread->EnablePainting();
-    }
+    _thread.EnablePainting();
 }
 
 // Routine Description:
@@ -611,7 +602,7 @@ void Renderer::EnablePainting()
 // - <none>
 void Renderer::WaitForPaintCompletionAndDisable()
 {
-    _pThread->WaitForPaintCompletionAndDisable();
+    _thread.WaitForPaintCompletionAndDisable();
 }
 
 // Routine Description:
