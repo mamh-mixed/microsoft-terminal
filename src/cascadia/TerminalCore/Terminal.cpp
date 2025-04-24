@@ -39,12 +39,23 @@ Terminal::Terminal(TestDummyMarker) :
 #endif
 }
 
-void Terminal::Create(til::size viewportSize, til::CoordType scrollbackLines, Renderer& renderer)
-{
+void Terminal::Create(
+    til::size viewportSize,
+    til::CoordType minimumBufferWidth,
+    til::CoordType scrollbackLines,
+    Renderer& renderer
+) {
+    viewportSize.width = Utils::ClampToShortMax(viewportSize.width, 1);
+    viewportSize.height = Utils::ClampToShortMax(viewportSize.height, 1);
+
+    _minimumBufferWidth = Utils::ClampToShortMax(minimumBufferWidth, 0);
+    _scrollbackLines = Utils::ClampToShortMax(scrollbackLines, 1);
     _mutableViewport = Viewport::FromDimensions({ 0, 0 }, viewportSize);
-    _scrollbackLines = scrollbackLines;
-    const til::size bufferSize{ viewportSize.width,
-                                Utils::ClampToShortMax(viewportSize.height + scrollbackLines, 1) };
+
+    const til::size bufferSize{
+        std::max(viewportSize.width, _minimumBufferWidth),
+        Utils::ClampToShortMax(viewportSize.height + _scrollbackLines, 1),
+    };
     const TextAttribute attr{};
     const UINT cursorSize = 12;
     _mainBuffer = std::make_unique<TextBuffer>(bufferSize, attr, cursorSize, true, &renderer);
@@ -62,11 +73,11 @@ void Terminal::Create(til::size viewportSize, til::CoordType scrollbackLines, Re
 void Terminal::CreateFromSettings(ICoreSettings settings,
                                   Renderer& renderer)
 {
-    const til::size viewportSize{ Utils::ClampToShortMax(settings.InitialCols(), 1),
-                                  Utils::ClampToShortMax(settings.InitialRows(), 1) };
-
-    // TODO:MSFT:20642297 - Support infinite scrollback here, if HistorySize is -1
-    Create(viewportSize, Utils::ClampToShortMax(settings.HistorySize(), 0), renderer);
+    const til::size viewportSize{
+        settings.InitialCols(),
+        settings.InitialRows(),
+    };
+    Create(viewportSize, settings.MinimumBufferWidth(), settings.HistorySize(), renderer);
 
     UpdateSettings(settings);
 }
@@ -268,8 +279,10 @@ try
         return S_OK;
     }
 
-    const auto newBufferHeight = std::clamp(viewportSize.height + _scrollbackLines, 1, SHRT_MAX);
-    const til::size bufferSize{ viewportSize.width, newBufferHeight };
+    const til::size bufferSize{
+        std::max(viewportSize.width, _minimumBufferWidth),
+        Utils::ClampToShortMax(viewportSize.height + _scrollbackLines, 1),
+    };
 
     // If the original buffer had _no_ scroll offset, then we should be at the
     // bottom in the new buffer as well. Track that case now.

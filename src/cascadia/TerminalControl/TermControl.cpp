@@ -526,7 +526,7 @@ namespace winrt::Microsoft::Terminal::Control::implementation
 
         _isInternalScrollBarUpdate = true;
 
-        auto scrollBar = ScrollBar();
+        auto scrollBar = VerticalScrollBar();
         if (update.newValue)
         {
             scrollBar.Value(*update.newValue);
@@ -775,7 +775,7 @@ namespace winrt::Microsoft::Terminal::Control::implementation
         // Clear search highlights scroll marks (by triggering an update after closing the search box)
         if (_showMarksInScrollbar)
         {
-            const auto scrollBar = ScrollBar();
+            const auto scrollBar = VerticalScrollBar();
             ScrollBarUpdate update{
                 .newValue = scrollBar.Value(),
                 .newMaximum = scrollBar.Maximum(),
@@ -917,19 +917,20 @@ namespace winrt::Microsoft::Terminal::Control::implementation
         SwapChainPanel().Margin(newMargin);
 
         // Apply settings for scrollbar
+        auto indicatorMode = Controls::Primitives::ScrollingIndicatorMode::MouseIndicator;
+        auto visibility = Visibility::Visible;
         if (settings.ScrollState() == ScrollbarState::Hidden)
         {
             // In the scenario where the user has turned off the OS setting to automatically hide scrollbars, the
             // Terminal scrollbar would still be visible; so, we need to set the control's visibility accordingly to
             // achieve the intended effect.
-            ScrollBar().IndicatorMode(Controls::Primitives::ScrollingIndicatorMode::None);
-            ScrollBar().Visibility(Visibility::Collapsed);
+            indicatorMode = Controls::Primitives::ScrollingIndicatorMode::None;
+            visibility = Visibility::Collapsed;
         }
-        else // (default or Visible)
+        for (auto&& scrollbar : { HorizontalScrollBar(), VerticalScrollBar() })
         {
-            // Default behavior
-            ScrollBar().IndicatorMode(Controls::Primitives::ScrollingIndicatorMode::MouseIndicator);
-            ScrollBar().Visibility(Visibility::Visible);
+            scrollbar.IndicatorMode(indicatorMode);
+            scrollbar.Visibility(visibility);
         }
 
         _interactivity.UpdateSettings();
@@ -1375,11 +1376,11 @@ namespace winrt::Microsoft::Terminal::Control::implementation
 
         auto bufferHeight = _core.BufferHeight();
 
-        ScrollBar().Maximum(0);
-        ScrollBar().Minimum(0);
-        ScrollBar().Value(0);
-        ScrollBar().ViewportSize(bufferHeight);
-        ScrollBar().LargeChange(bufferHeight); // scroll one "screenful" at a time when the scroll bar is clicked
+        VerticalScrollBar().Maximum(0);
+        VerticalScrollBar().Minimum(0);
+        VerticalScrollBar().Value(0);
+        VerticalScrollBar().ViewportSize(bufferHeight);
+        VerticalScrollBar().LargeChange(bufferHeight); // scroll one "screenful" at a time when the scroll bar is clicked
 
         // Set up blinking cursor
         int blinkTime = GetCaretBlinkTime();
@@ -2220,8 +2221,14 @@ namespace winrt::Microsoft::Terminal::Control::implementation
         _core.AdjustFontSize(fontSizeDelta);
     }
 
-    void TermControl::_ScrollbarChangeHandler(const Windows::Foundation::IInspectable& /*sender*/,
-                                              const Controls::Primitives::RangeBaseValueChangedEventArgs& args)
+    void TermControl::_HorizontalScrollBarChangeHandler(const Windows::Foundation::IInspectable& /*sender*/,
+                                                        const Controls::Primitives::RangeBaseValueChangedEventArgs& args)
+    {
+        (void)args;
+    }
+
+    void TermControl::_VerticalScrollBarChangeHandler(const Windows::Foundation::IInspectable& /*sender*/,
+                                                      const Controls::Primitives::RangeBaseValueChangedEventArgs& args)
     {
         if (_isInternalScrollBarUpdate || _IsClosing())
         {
@@ -2345,7 +2352,7 @@ namespace winrt::Microsoft::Terminal::Control::implementation
             {
                 static constexpr auto microSecPerSec = 1000000.0;
                 const auto deltaTime = std::chrono::duration_cast<std::chrono::microseconds>(timeNow - *_lastAutoScrollUpdateTime).count() / microSecPerSec;
-                ScrollBar().Value(ScrollBar().Value() + _autoScrollVelocity * deltaTime);
+                VerticalScrollBar().Value(VerticalScrollBar().Value() + _autoScrollVelocity * deltaTime);
 
                 if (_autoScrollingPointerPoint)
                 {
@@ -2741,7 +2748,7 @@ namespace winrt::Microsoft::Terminal::Control::implementation
     // - viewTop: the viewTop to scroll to
     void TermControl::ScrollViewport(int viewTop)
     {
-        ScrollBar().Value(viewTop);
+        VerticalScrollBar().Value(viewTop);
     }
 
     int TermControl::ScrollOffset() const
@@ -2941,7 +2948,7 @@ namespace winrt::Microsoft::Terminal::Control::implementation
             // Reserve additional space if scrollbar is intended to be visible
             if (_core.Settings().ScrollState() != ScrollbarState::Hidden)
             {
-                width += static_cast<float>(ScrollBar().ActualWidth());
+                width += static_cast<float>(VerticalScrollBar().ActualWidth());
             }
 
             // Account for the size of any padding
@@ -2979,7 +2986,7 @@ namespace winrt::Microsoft::Terminal::Control::implementation
 
         if (widthOrHeight && _core.Settings().ScrollState() != ScrollbarState::Hidden)
         {
-            nonTerminalArea += gsl::narrow_cast<float>(ScrollBar().ActualWidth());
+            nonTerminalArea += gsl::narrow_cast<float>(VerticalScrollBar().ActualWidth());
         }
 
         const auto gridSize = dimension - nonTerminalArea;
@@ -3842,7 +3849,7 @@ namespace winrt::Microsoft::Terminal::Control::implementation
         {
             if (_showMarksInScrollbar)
             {
-                const auto scrollBar = ScrollBar();
+                const auto scrollBar = VerticalScrollBar();
                 ScrollBarUpdate update{
                     .newValue = scrollBar.Value(),
                     .newMaximum = scrollBar.Maximum(),

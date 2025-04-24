@@ -228,7 +228,7 @@ HRESULT HwndTerminal::Initialize()
 
     _renderEngine = std::move(engine);
 
-    _terminal->Create({ 80, 25 }, 9001, *_renderer);
+    _terminal->Create({ 80, 25 }, 0, 9001, *_renderer);
     _terminal->SetWriteInputCallback([=](std::wstring_view input) noexcept { _WriteTextToConnection(input); });
     _renderer->EnablePainting();
 
