@@ -130,7 +130,7 @@ struct CsBridgeTerminalSettings : winrt::implements<CsBridgeTerminalSettings, IC
     }
     til::color SelectionBackground() const
     {
-        return til::color{ _theme.DefaultSelectionBackground }.with_alpha(static_cast<uint8_t>(255.0 * _theme.SelectionBackgroundAlpha));
+        return til::color{ _theme.DefaultSelectionBackground };
     }
     winrt::hstring FontFace() const
     {
