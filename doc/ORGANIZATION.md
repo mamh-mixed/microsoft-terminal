@@ -65,9 +65,6 @@
 	* `clipboard.cpp`
 * Handles the command prompt line as you see in CMD.exe (known as the processed input line… most other shells handle this themselves with raw input and don’t use ours. This is a legacy of bad architectural design, putting stuff in conhost not in CMD)
 	* `cmdline.cpp`
-* Handles shunting IME data back and forth to the TSF library and to and from the various buffers
-	* `Conimeinfo.cpp`
-	* `Convarea.cpp`
 * Contains the global state for the entire console application
 	* `consoleInformation.cpp`
 * Stuff related to the low-level server communication over our protocol with the driver
@@ -125,8 +122,6 @@
 * Private calls into the Windows Window Manager to perform privileged actions related to the console process (working to eliminate) or for High DPI stuff (also working to eliminate)
 	* `Userprivapi.cpp`
 	* `Windowdpiapi.cpp`
-* New UTF8 state machine in progress to improve Bash (and other apps) support for UTF-8 in console
-	* `Utf8ToWideCharParser.cpp`
 * Window resizing/layout/management/window messaging loops and all that other stuff that has us interact with Windows to create a visual display surface and control the user interaction entry point
 	* `Window.cpp`
 	* `Windowproc.cpp`

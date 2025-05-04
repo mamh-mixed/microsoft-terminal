@@ -11,12 +11,6 @@ using namespace Microsoft::Console::VirtualTerminal;
 
 static constexpr int s_MaxDefaultCoordinate = 94;
 
-// Alternate scroll sequences
-static constexpr std::wstring_view CursorUpSequence{ L"\x1b[A" };
-static constexpr std::wstring_view CursorDownSequence{ L"\x1b[B" };
-static constexpr std::wstring_view ApplicationUpSequence{ L"\x1bOA" };
-static constexpr std::wstring_view ApplicationDownSequence{ L"\x1bOB" };
-
 // Routine Description:
 // - Determines if the input windows message code describes a button event
 //     (left, middle, right button and any of up, down or double click)
@@ -69,24 +63,19 @@ static constexpr bool _isWheelMsg(const unsigned int buttonCode) noexcept
 }
 
 // Routine Description:
-// - Determines if the input windows message code describes a button press
-//     (either down or doubleclick)
+// - Determines if the input windows message code describes a button release
 // Parameters:
 // - button - the message to decode.
 // Return value:
-// - true if button is a button down event
-static constexpr bool _isButtonDown(const unsigned int button) noexcept
+// - true if button is a button up event
+static constexpr bool _isButtonUp(const unsigned int button) noexcept
 {
     switch (button)
     {
-    case WM_LBUTTONDBLCLK:
-    case WM_LBUTTONDOWN:
-    case WM_RBUTTONDOWN:
-    case WM_RBUTTONDBLCLK:
-    case WM_MBUTTONDOWN:
-    case WM_MBUTTONDBLCLK:
-    case WM_MOUSEWHEEL:
-    case WM_MOUSEHWHEEL:
+    case WM_LBUTTONUP:
+    case WM_RBUTTONUP:
+    case WM_MBUTTONUP:
+    case WM_XBUTTONUP:
         return true;
     default:
         return false;
@@ -147,11 +136,11 @@ constexpr unsigned int TerminalInput::s_GetPressedButton(const MouseButtonState 
 // - modifierKeyState - the modifier keys _in console format_
 // - delta - scroll wheel delta
 // Return value:
-// - the int representing the equivalent X button encoding.
-static constexpr int _windowsButtonToXEncoding(const unsigned int button,
-                                               const bool isHover,
-                                               const short modifierKeyState,
-                                               const short delta) noexcept
+// - the character representing the equivalent X button encoding.
+static constexpr wchar_t _windowsButtonToXEncoding(const unsigned int button,
+                                                   const bool isHover,
+                                                   const short modifierKeyState,
+                                                   const short delta) noexcept
 {
     auto xvalue = 0;
     switch (button)
@@ -191,7 +180,7 @@ static constexpr int _windowsButtonToXEncoding(const unsigned int button,
     WI_UpdateFlag(xvalue, 0x08, WI_IsAnyFlagSet(modifierKeyState, ALT_PRESSED));
     WI_UpdateFlag(xvalue, 0x10, WI_IsAnyFlagSet(modifierKeyState, CTRL_PRESSED));
 
-    return xvalue;
+    return gsl::narrow_cast<wchar_t>(L' ' + xvalue);
 }
 
 // Routine Description:
@@ -270,9 +259,9 @@ static constexpr til::point _winToVTCoord(const til::point coordWinCoordinate) n
 // - sCoordinateValue - the value to encode.
 // Return value:
 // - the encoded value.
-static constexpr til::CoordType _encodeDefaultCoordinate(const til::CoordType sCoordinateValue) noexcept
+static constexpr wchar_t _encodeDefaultCoordinate(const til::CoordType sCoordinateValue) noexcept
 {
-    return sCoordinateValue + 32;
+    return gsl::narrow_cast<wchar_t>(sCoordinateValue + 32);
 }
 
 // Routine Description:
@@ -334,11 +323,6 @@ TerminalInput::OutputType TerminalInput::HandleMouse(const til::point position, 
         _mouseInputState.accumulatedDelta = 0;
     }
 
-    if (ShouldSendAlternateScroll(button, delta))
-    {
-        return _makeAlternateScrollOutput(delta);
-    }
-
     if (IsTrackingMouseInput())
     {
         // isHover is only true for WM_MOUSEMOVE events
@@ -383,13 +367,18 @@ TerminalInput::OutputType TerminalInput::HandleMouse(const til::point position, 
                 // then we want to handle hovers with WM_MOUSEMOVE.
                 // However, if we're dragging (WM_MOUSEMOVE with a button pressed),
                 //      then use that pressed button instead.
-                return _GenerateSGRSequence(position, physicalButtonPressed ? realButton : button, _isButtonDown(realButton), isHover, modifierKeyState, delta);
+                return _GenerateSGRSequence(position, physicalButtonPressed ? realButton : button, _isButtonUp(button), isHover, modifierKeyState, delta);
             }
             else
             {
                 return _GenerateDefaultSequence(position, realButton, isHover, modifierKeyState, delta);
             }
         }
+    }
+
+    if (ShouldSendAlternateScroll(button, delta))
+    {
+        return _makeAlternateScrollOutput(delta);
     }
 
     return {};
@@ -415,12 +404,9 @@ TerminalInput::OutputType TerminalInput::_GenerateDefaultSequence(const til::poi
         const auto vtCoords = _winToVTCoord(position);
         const auto encodedX = _encodeDefaultCoordinate(vtCoords.x);
         const auto encodedY = _encodeDefaultCoordinate(vtCoords.y);
+        const auto encodedButton = _windowsButtonToXEncoding(button, isHover, modifierKeyState, delta);
 
-        StringType format{ L"\x1b[Mbxy" };
-        til::at(format, 3) = gsl::narrow_cast<wchar_t>(L' ' + _windowsButtonToXEncoding(button, isHover, modifierKeyState, delta));
-        til::at(format, 4) = gsl::narrow_cast<wchar_t>(encodedX);
-        til::at(format, 5) = gsl::narrow_cast<wchar_t>(encodedY);
-        return format;
+        return fmt::format(FMT_COMPILE(L"{}M{}{}{}"), _csi, encodedButton, encodedX, encodedY);
     }
 
     return {};
@@ -458,13 +444,9 @@ TerminalInput::OutputType TerminalInput::_GenerateUtf8Sequence(const til::point 
         const auto vtCoords = _winToVTCoord(position);
         const auto encodedX = _encodeDefaultCoordinate(vtCoords.x);
         const auto encodedY = _encodeDefaultCoordinate(vtCoords.y);
+        const auto encodedButton = _windowsButtonToXEncoding(button, isHover, modifierKeyState, delta);
 
-        StringType format{ L"\x1b[Mbxy" };
-        // The short cast is safe because we know s_WindowsButtonToXEncoding  never returns more than xff
-        til::at(format, 3) = gsl::narrow_cast<wchar_t>(L' ' + _windowsButtonToXEncoding(button, isHover, modifierKeyState, delta));
-        til::at(format, 4) = gsl::narrow_cast<wchar_t>(encodedX);
-        til::at(format, 5) = gsl::narrow_cast<wchar_t>(encodedY);
-        return format;
+        return fmt::format(FMT_COMPILE(L"{}M{}{}{}"), _csi, encodedButton, encodedX, encodedY);
     }
 
     return {};
@@ -476,18 +458,18 @@ TerminalInput::OutputType TerminalInput::_GenerateUtf8Sequence(const til::point 
 // Parameters:
 // - position - The windows coordinates (top,left = 0,0) of the mouse event
 // - button - the message to decode. WM_MOUSEMOVE is used for mouse hovers with no buttons pressed.
-// - isDown - true if a mouse button was pressed.
+// - isRelease - true if a mouse button was released.
 // - isHover - true if the sequence is generated in response to a mouse hover
 // - modifierKeyState - the modifier keys pressed with this button
 // - delta - the amount that the scroll wheel changed (should be 0 unless button is a WM_MOUSE*WHEEL)
 // - ppwchSequence - On success, where to put the pointer to the generated sequence
 // - pcchLength - On success, where to put the length of the generated sequence
-TerminalInput::OutputType TerminalInput::_GenerateSGRSequence(const til::point position, const unsigned int button, const bool isDown, const bool isHover, const short modifierKeyState, const short delta)
+TerminalInput::OutputType TerminalInput::_GenerateSGRSequence(const til::point position, const unsigned int button, const bool isRelease, const bool isHover, const short modifierKeyState, const short delta)
 {
     // Format for SGR events is:
-    // "\x1b[<%d;%d;%d;%c", xButton, x+1, y+1, fButtonDown? 'M' : 'm'
+    // "\x1b[<%d;%d;%d;%c", xButton, x+1, y+1, isRelease? 'm' : 'M'
     const auto xbutton = _windowsButtonToSGREncoding(button, isHover, modifierKeyState, delta);
-    return fmt::format(FMT_COMPILE(L"\x1b[<{};{};{}{}"), xbutton, position.x + 1, position.y + 1, isDown ? L'M' : L'm');
+    return fmt::format(FMT_COMPILE(L"{}<{};{};{}{}"), _csi, xbutton, position.x + 1, position.y + 1, isRelease ? L'm' : L'M');
 }
 
 // Routine Description:
@@ -515,10 +497,10 @@ TerminalInput::OutputType TerminalInput::_makeAlternateScrollOutput(const short 
 {
     if (delta > 0)
     {
-        return MakeOutput(_inputMode.test(Mode::CursorKey) ? ApplicationUpSequence : CursorUpSequence);
+        return MakeOutput(_keyMap.at(VK_UP));
     }
     else
     {
-        return MakeOutput(_inputMode.test(Mode::CursorKey) ? ApplicationDownSequence : CursorDownSequence);
+        return MakeOutput(_keyMap.at(VK_DOWN));
     }
 }

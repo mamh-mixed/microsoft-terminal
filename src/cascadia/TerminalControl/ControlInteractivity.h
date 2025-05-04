@@ -59,12 +59,13 @@ namespace winrt::Microsoft::Terminal::Control::implementation
                             const Core::Point pixelPosition);
         void TouchPressed(const Core::Point contactPoint);
 
-        void PointerMoved(const uint32_t pointerId,
+        bool PointerMoved(const uint32_t pointerId,
                           Control::MouseButtonState buttonState,
                           const unsigned int pointerUpdateKind,
                           const ::Microsoft::Terminal::Core::ControlKeyStates modifiers,
                           const Core::Point pixelPosition);
-        void TouchMoved(const Core::Point newTouchPoint);
+        void TouchMoved(const Core::Point newTouchPoint,
+                        const bool focused);
 
         void PointerReleased(const uint32_t pointerId,
                              Control::MouseButtonState buttonState,
@@ -78,26 +79,26 @@ namespace winrt::Microsoft::Terminal::Control::implementation
                         const Core::Point pixelPosition,
                         const Control::MouseButtonState state);
 
-        void UpdateScrollbar(const double newValue);
+        void UpdateScrollbar(const float newValue);
 
 #pragma endregion
 
         bool CopySelectionToClipboard(bool singleLine,
+                                      bool withControlSequences,
                                       const Windows::Foundation::IReference<CopyFormat>& formats);
         void RequestPasteTextFromClipboard();
         void SetEndSelectionPoint(const Core::Point pixelPosition);
-        bool ManglePathsForWsl();
 
         uint64_t Id();
         void AttachToNewControl(const Microsoft::Terminal::Control::IKeyBindings& keyBindings);
 
-        TYPED_EVENT(OpenHyperlink, IInspectable, Control::OpenHyperlinkEventArgs);
-        TYPED_EVENT(PasteFromClipboard, IInspectable, Control::PasteFromClipboardEventArgs);
-        TYPED_EVENT(ScrollPositionChanged, IInspectable, Control::ScrollPositionChangedArgs);
-        TYPED_EVENT(ContextMenuRequested, IInspectable, Control::ContextMenuRequestedEventArgs);
+        til::typed_event<IInspectable, Control::OpenHyperlinkEventArgs> OpenHyperlink;
+        til::typed_event<IInspectable, Control::PasteFromClipboardEventArgs> PasteFromClipboard;
+        til::typed_event<IInspectable, Control::ScrollPositionChangedArgs> ScrollPositionChanged;
+        til::typed_event<IInspectable, Control::ContextMenuRequestedEventArgs> ContextMenuRequested;
 
-        TYPED_EVENT(Attached, IInspectable, IInspectable);
-        TYPED_EVENT(Closed, IInspectable, IInspectable);
+        til::typed_event<IInspectable, IInspectable> Attached;
+        til::typed_event<IInspectable, IInspectable> Closed;
 
     private:
         // NOTE: _uiaEngine must be ordered before _core.
@@ -110,8 +111,8 @@ namespace winrt::Microsoft::Terminal::Control::implementation
         std::unique_ptr<::Microsoft::Console::Render::UiaEngine> _uiaEngine;
 
         winrt::com_ptr<ControlCore> _core{ nullptr };
-        unsigned int _rowsToScroll;
-        double _internalScrollbarPosition{ 0.0 };
+        UINT _rowsToScroll = 3;
+        float _internalScrollbarPosition = 0;
 
         // If this is set, then we assume we are in the middle of panning the
         //      viewport via touch input.
@@ -174,8 +175,7 @@ namespace winrt::Microsoft::Terminal::Control::implementation
         bool _canSendVTMouseInput(const ::Microsoft::Terminal::Core::ControlKeyStates modifiers);
         bool _shouldSendAlternateScroll(const ::Microsoft::Terminal::Core::ControlKeyStates modifiers, const int32_t delta);
 
-        void _sendPastedTextToConnection(std::wstring_view wstr);
-        til::point _getTerminalPosition(const til::point pixelPosition);
+        til::point _getTerminalPosition(const til::point pixelPosition, bool roundToNearestCell);
 
         bool _sendMouseEventHelper(const til::point terminalPosition,
                                    const unsigned int pointerUpdateKind,

@@ -32,7 +32,7 @@ namespace Microsoft.Terminal.Control
 
         InteractivityAutomationPeer OnCreateAutomationPeer();
 
-        Boolean CopySelectionToClipboard(Boolean singleLine, Windows.Foundation.IReference<CopyFormat> formats);
+        Boolean CopySelectionToClipboard(Boolean singleLine, Boolean withControlSequences, Windows.Foundation.IReference<CopyFormat> formats);
         void RequestPasteTextFromClipboard();
         void SetEndSelectionPoint(Microsoft.Terminal.Core.Point point);
 
@@ -44,13 +44,14 @@ namespace Microsoft.Terminal.Control
                             Microsoft.Terminal.Core.Point pixelPosition);
         void TouchPressed(Microsoft.Terminal.Core.Point contactPoint);
 
-        void PointerMoved(UInt32 pointerId,
-                          MouseButtonState buttonState,
-                          UInt32 pointerUpdateKind,
-                          Microsoft.Terminal.Core.ControlKeyStates modifiers,
-                          Microsoft.Terminal.Core.Point pixelPosition);
+        Boolean PointerMoved(UInt32 pointerId,
+                             MouseButtonState buttonState,
+                             UInt32 pointerUpdateKind,
+                             Microsoft.Terminal.Core.ControlKeyStates modifiers,
+                             Microsoft.Terminal.Core.Point pixelPosition);
 
-        void TouchMoved(Microsoft.Terminal.Core.Point newTouchPoint);
+        void TouchMoved(Microsoft.Terminal.Core.Point newTouchPoint,
+                        Boolean focused);
 
         void PointerReleased(UInt32 pointerId,
                              MouseButtonState buttonState,
@@ -64,9 +65,7 @@ namespace Microsoft.Terminal.Control
                            Microsoft.Terminal.Core.Point pixelPosition,
                            MouseButtonState state);
 
-        void UpdateScrollbar(Double newValue);
-
-        Boolean ManglePathsForWsl { get; };
+        void UpdateScrollbar(Single newValue);
 
         event Windows.Foundation.TypedEventHandler<Object, OpenHyperlinkEventArgs> OpenHyperlink;
         event Windows.Foundation.TypedEventHandler<Object, ScrollPositionChangedArgs> ScrollPositionChanged;

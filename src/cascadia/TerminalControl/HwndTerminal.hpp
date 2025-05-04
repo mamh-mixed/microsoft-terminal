@@ -3,14 +3,32 @@
 
 #pragma once
 
-#include "../../renderer/base/Renderer.hpp"
-#include "../../renderer/dx/DxRenderer.hpp"
-#include "../../renderer/uia/UiaRenderer.hpp"
-#include "../../cascadia/TerminalCore/Terminal.hpp"
+#include "../../buffer/out/textBuffer.hpp"
+#include "../../renderer/inc/FontInfoDesired.hpp"
 #include "../../types/IControlAccessibilityInfo.h"
-#include "HwndTerminalAutomationPeer.hpp"
+#include "../../tsf/Handle.h"
 
-using namespace Microsoft::Console::VirtualTerminal;
+namespace Microsoft::Console::Render::Atlas
+{
+    class AtlasEngine;
+}
+
+namespace Microsoft::Console::Render
+{
+    using AtlasEngine = Atlas::AtlasEngine;
+    class IRenderData;
+    class Renderer;
+    class UiaEngine;
+}
+
+namespace Microsoft::Terminal::Core
+{
+    class Terminal;
+}
+
+class FontInfo;
+class FontInfoDesired;
+class HwndTerminalAutomationPeer;
 
 // Keep in sync with TerminalTheme.cs
 typedef struct _TerminalTheme
@@ -18,7 +36,6 @@ typedef struct _TerminalTheme
     COLORREF DefaultBackground;
     COLORREF DefaultForeground;
     COLORREF DefaultSelectionBackground;
-    float SelectionBackgroundAlpha;
     uint32_t CursorStyle; // This will be converted to DispatchTypes::CursorStyle (size_t), but C# cannot marshal an enum type and have it fit in a size_t.
     COLORREF ColorTable[16];
 } TerminalTheme, *LPTerminalTheme;
@@ -69,6 +86,21 @@ public:
     static LRESULT CALLBACK HwndTerminalWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) noexcept;
 
 private:
+    struct TsfDataProvider : public Microsoft::Console::TSF::IDataProvider
+    {
+        TsfDataProvider(HwndTerminal* t) :
+            _terminal(t) {}
+        virtual ~TsfDataProvider() = default;
+        STDMETHODIMP TsfDataProvider::QueryInterface(REFIID, void**) noexcept override;
+        ULONG STDMETHODCALLTYPE TsfDataProvider::AddRef() noexcept override;
+        ULONG STDMETHODCALLTYPE TsfDataProvider::Release() noexcept override;
+        HWND GetHwnd() override;
+        RECT GetViewport() override;
+        RECT GetCursorPosition() override;
+        void HandleOutput(std::wstring_view text) override;
+        Microsoft::Console::Render::Renderer* GetRenderer() override;
+        HwndTerminal* _terminal;
+    };
     wil::unique_hwnd _hwnd;
     FontInfoDesired _desiredFont;
     FontInfo _actualFont;
@@ -79,7 +111,7 @@ private:
     std::unique_ptr<::Microsoft::Terminal::Core::Terminal> _terminal;
 
     std::unique_ptr<::Microsoft::Console::Render::Renderer> _renderer;
-    std::unique_ptr<::Microsoft::Console::Render::DxEngine> _renderEngine;
+    std::unique_ptr<::Microsoft::Console::Render::AtlasEngine> _renderEngine;
     std::unique_ptr<::Microsoft::Console::Render::UiaEngine> _uiaEngine;
 
     bool _focused{ false };
@@ -89,6 +121,10 @@ private:
     std::chrono::steady_clock::time_point _lastMouseClickTimestamp{};
     std::optional<til::point> _lastMouseClickPos;
     std::optional<til::point> _singleClickTouchdownPos;
+
+    // _tsfHandle uses _tsfDataProvider. Destructors run from bottom to top; this maintains correct destruction order.
+    TsfDataProvider _tsfDataProvider{ this };
+    Microsoft::Console::TSF::Handle _tsfHandle;
 
     friend HRESULT _stdcall CreateTerminal(HWND parentHwnd, _Out_ void** hwnd, _Out_ void** terminal);
     friend HRESULT _stdcall TerminalTriggerResize(_In_ void* terminal, _In_ til::CoordType width, _In_ til::CoordType height, _Out_ til::size* dimensions);
@@ -109,9 +145,11 @@ private:
 
     void _UpdateFont(int newDpi);
     void _WriteTextToConnection(const std::wstring_view text) noexcept;
-    HRESULT _CopyTextToSystemClipboard(const TextBuffer::TextAndColor& rows, const bool fAlsoCopyFormatting);
-    HRESULT _CopyToSystemClipboard(std::string stringToCopy, LPCWSTR lpszFormat);
+    HRESULT _CopyTextToSystemClipboard(const std::wstring& text, const std::string& htmlData, const std::string& rtfData) const;
+    HRESULT _CopyToSystemClipboard(const std::string& stringToCopy, LPCWSTR lpszFormat) const;
     void _PasteTextFromClipboard() noexcept;
+
+    void _FocusTSF() noexcept;
 
     const unsigned int _NumberOfClicks(til::point clickPos, std::chrono::steady_clock::time_point clickTime) noexcept;
     HRESULT _StartSelection(LPARAM lParam) noexcept;
@@ -129,7 +167,6 @@ private:
     // Inherited via IControlAccessibilityInfo
     til::size GetFontSize() const noexcept override;
     til::rect GetBounds() const noexcept override;
-    double GetScaleFactor() const noexcept override;
     void ChangeViewport(const til::inclusive_rect& NewWindow) override;
     HRESULT GetHostUiaProvider(IRawElementProviderSimple** provider) noexcept override;
     til::rect GetPadding() const noexcept override;
