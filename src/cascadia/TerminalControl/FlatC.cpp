@@ -166,13 +166,13 @@ struct CsBridgeTerminalSettings : winrt::implements<CsBridgeTerminalSettings, IC
     HARDCODED_PROPERTY(winrt::Windows::Foundation::IReference<winrt::Microsoft::Terminal::Core::Color>, StartingTabColor, nullptr);
     HARDCODED_PROPERTY(winrt::hstring, ProfileName);
     HARDCODED_PROPERTY(bool, UseAcrylic, false);
-    HARDCODED_PROPERTY(double, Opacity, 1.0);
+    HARDCODED_PROPERTY(float, Opacity, 1.0);
     HARDCODED_PROPERTY(winrt::hstring, Padding, DEFAULT_PADDING);
     HARDCODED_PROPERTY(winrt::Windows::UI::Text::FontWeight, FontWeight, winrt::Windows::UI::Text::FontWeight{ 400 });
     HARDCODED_PROPERTY(IFontAxesMap, FontAxes);
     HARDCODED_PROPERTY(IFontFeatureMap, FontFeatures);
     HARDCODED_PROPERTY(winrt::hstring, BackgroundImage);
-    HARDCODED_PROPERTY(double, BackgroundImageOpacity, 1.0);
+    HARDCODED_PROPERTY(float, BackgroundImageOpacity, 1.0);
     HARDCODED_PROPERTY(winrt::Windows::UI::Xaml::Media::Stretch, BackgroundImageStretchMode, winrt::Windows::UI::Xaml::Media::Stretch::UniformToFill);
     HARDCODED_PROPERTY(winrt::Windows::UI::Xaml::HorizontalAlignment, BackgroundImageHorizontalAlignment, winrt::Windows::UI::Xaml::HorizontalAlignment::Center);
     HARDCODED_PROPERTY(winrt::Windows::UI::Xaml::VerticalAlignment, BackgroundImageVerticalAlignment, winrt::Windows::UI::Xaml::VerticalAlignment::Center);
@@ -189,13 +189,13 @@ struct CsBridgeTerminalSettings : winrt::implements<CsBridgeTerminalSettings, IC
     HARDCODED_PROPERTY(bool, SoftwareRendering, false);
     HARDCODED_PROPERTY(bool, ForceVTInput, false);
     HARDCODED_PROPERTY(winrt::hstring, PixelShaderPath);
+    HARDCODED_PROPERTY(winrt::hstring, PixelShaderImagePath);
     HARDCODED_PROPERTY(bool, IntenseIsBright);
     HARDCODED_PROPERTY(bool, IntenseIsBold);
     HARDCODED_PROPERTY(bool, ShowMarks);
     HARDCODED_PROPERTY(bool, UseBackgroundImageForWindow);
     HARDCODED_PROPERTY(bool, AutoMarkPrompts);
     HARDCODED_PROPERTY(bool, VtPassthrough);
-    HARDCODED_PROPERTY(winrt::hstring, ProfileSource, L"this property was a mistake");
     HARDCODED_PROPERTY(bool, UseAtlasEngine, false);
     HARDCODED_PROPERTY(AdjustTextMode, AdjustIndistinguishableColors, AdjustTextMode::Never);
     HARDCODED_PROPERTY(bool, RightClickContextMenu, false);
@@ -203,6 +203,9 @@ struct CsBridgeTerminalSettings : winrt::implements<CsBridgeTerminalSettings, IC
     HARDCODED_PROPERTY(winrt::hstring, CellHeight, L"");
     HARDCODED_PROPERTY(bool, RepositionCursorWithMouse, false);
     HARDCODED_PROPERTY(bool, EnableUnfocusedAcrylic, false);
+    HARDCODED_PROPERTY(bool, RainbowSuggestions, false);
+    HARDCODED_PROPERTY(bool, AllowVtClipboardWrite, true);
+    HARDCODED_PROPERTY(bool, AllowVtChecksumReport, false);
 
 public:
     void SetTheme(TerminalTheme theme, LPCWSTR fontFamily, til::CoordType fontSize, int newDpi)
@@ -446,7 +449,7 @@ struct HwndTerminal
 
     HRESULT UserScroll(int viewTop)
     {
-        _interactivity->UpdateScrollbar(viewTop);
+        _interactivity->UpdateScrollbar(static_cast<float>(viewTop) /* TODO(DH) */);
         return S_OK;
     }
 

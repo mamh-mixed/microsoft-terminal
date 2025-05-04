@@ -464,7 +464,7 @@ namespace winrt::Microsoft::Terminal::Control::implementation
         return handledCompletely;
     }
 
-    void ControlInteractivity::TouchMoved(const Core::Point newTouchPoint, const bool focused)
+    void ControlInteractivity::TouchMoved(const Core::Point newTouchPoint)
     {
         if (_focused &&
             _touchAnchor)
@@ -903,7 +903,7 @@ namespace winrt::Microsoft::Terminal::Control::implementation
             {
                 static constexpr auto microSecPerSec = 1000000.0;
                 const auto deltaTime = std::chrono::duration_cast<std::chrono::microseconds>(timeNow - *_lastAutoScrollUpdateTime).count() / microSecPerSec;
-                UpdateScrollbar(_core->ScrollOffset() + _autoScrollVelocity * deltaTime);
+                UpdateScrollbar(static_cast<float>(_core->ScrollOffset()) + static_cast<float>(_autoScrollVelocity * deltaTime) /* TODO(DH) */);
 
                 if (_autoScrollingPointerPoint)
                 {

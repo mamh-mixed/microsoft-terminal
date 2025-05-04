@@ -1929,7 +1929,8 @@ namespace winrt::Microsoft::Terminal::Control::implementation
             // NB: I don't think this is correct because the touch should be in the center of the rect.
             //     I suspect the point.Position() would be correct.
             const auto contactRect = point.Properties().ContactRect();
-            _interactivity.TouchPressed({ contactRect.X, contactRect.Y });
+            til::point newTouchPoint{ til::math::rounding, contactRect.X, contactRect.Y };
+            _interactivity.TouchPressed(newTouchPoint.to_core_point());
         }
         else
         {
@@ -1978,16 +1979,15 @@ namespace winrt::Microsoft::Terminal::Control::implementation
                                                                        TermControl::GetPressedMouseButtons(point),
                                                                        TermControl::GetPointerUpdateKind(point),
                                                                        ControlKeyStates(args.KeyModifiers()),
-                                                                       _focused,
-                                                                       pixelPosition,
-                                                                       _pointerPressedInBounds);
+                                                                       pixelPosition);
+            /* TODO(DH) */ UNREFERENCED_PARAMETER(suppressFurtherHandling);
         }
         else if (type == Windows::Devices::Input::PointerDeviceType::Touch)
         {
             const auto contactRect = point.Properties().ContactRect();
             til::point newTouchPoint{ til::math::rounding, contactRect.X, contactRect.Y };
 
-            _interactivity.TouchMoved(newTouchPoint.to_core_point(), _focused);
+            _interactivity.TouchMoved(newTouchPoint.to_core_point());
         }
 
         args.Handled(true);
