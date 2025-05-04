@@ -77,11 +77,11 @@ struct CsBridgeConnection : public winrt::implements<CsBridgeConnection, winrt::
 {
     void Initialize(IInspectable x) {}
     void Start() {}
-    void WriteInput(winrt::hstring d)
+    void WriteInput(winrt::array_view<const char16_t> d)
     {
         if (_pfnWriteCallback)
         {
-            _pfnWriteCallback(d.data());
+            _pfnWriteCallback(reinterpret_cast<const wchar_t*>(d.data()));
         }
     }
     void Resize(uint32_t r, uint32_t c) {}
@@ -90,6 +90,9 @@ struct CsBridgeConnection : public winrt::implements<CsBridgeConnection, winrt::
     WINRT_CALLBACK(TerminalOutput, winrt::Microsoft::Terminal::TerminalConnection::TerminalOutputHandler);
 
     TYPED_EVENT(StateChanged, winrt::Microsoft::Terminal::TerminalConnection::ITerminalConnection, winrt::Windows::Foundation::IInspectable);
+
+public:
+    HARDCODED_PROPERTY(winrt::guid, SessionId, winrt::guid{});
 
 public:
     PWRITECB _pfnWriteCallback{ nullptr };
@@ -102,7 +105,7 @@ public:
 struct CsBridgeTerminalSettings : winrt::implements<CsBridgeTerminalSettings, IControlSettings, ICoreSettings, IControlAppearance, ICoreAppearance>
 {
     using IFontAxesMap = winrt::Windows::Foundation::Collections::IMap<winrt::hstring, float>;
-    using IFontFeatureMap = winrt::Windows::Foundation::Collections::IMap<winrt::hstring, uint32_t>;
+    using IFontFeatureMap = winrt::Windows::Foundation::Collections::IMap<winrt::hstring, float>;
     CsBridgeTerminalSettings()
     {
         const auto campbellSpan = Microsoft::Console::Utils::CampbellColorTable();
@@ -206,6 +209,16 @@ struct CsBridgeTerminalSettings : winrt::implements<CsBridgeTerminalSettings, IC
     HARDCODED_PROPERTY(bool, RainbowSuggestions, false);
     HARDCODED_PROPERTY(bool, AllowVtClipboardWrite, true);
     HARDCODED_PROPERTY(bool, AllowVtChecksumReport, false);
+    HARDCODED_PROPERTY(winrt::hstring, AnswerbackMessage, L"");
+    HARDCODED_PROPERTY(winrt::Microsoft::Terminal::Control::PathTranslationStyle, PathTranslationStyle, winrt::Microsoft::Terminal::Control::PathTranslationStyle::None);
+    HARDCODED_PROPERTY(winrt::Microsoft::Terminal::Control::DefaultInputScope, DefaultInputScope, winrt::Microsoft::Terminal::Control::DefaultInputScope::Default);
+    HARDCODED_PROPERTY(winrt::Microsoft::Terminal::Control::TextMeasurement, TextMeasurement, winrt::Microsoft::Terminal::Control::TextMeasurement::Graphemes);
+    HARDCODED_PROPERTY(bool, DisablePartialInvalidation, false);
+    HARDCODED_PROPERTY(winrt::Microsoft::Terminal::Control::GraphicsAPI, GraphicsAPI, winrt::Microsoft::Terminal::Control::GraphicsAPI::Automatic);
+    HARDCODED_PROPERTY(winrt::Microsoft::Terminal::Control::CopyFormat, CopyFormatting, winrt::Microsoft::Terminal::Control::CopyFormat::All);
+    HARDCODED_PROPERTY(bool, EnableColorGlyphs, true);
+    HARDCODED_PROPERTY(bool, EnableBuiltinGlyphs, true);
+    HARDCODED_PROPERTY(winrt::guid, SessionId, winrt::guid{});
 
 public:
     void SetTheme(TerminalTheme theme, LPCWSTR fontFamily, til::CoordType fontSize, int newDpi)
