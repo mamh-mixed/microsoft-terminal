@@ -361,6 +361,8 @@ namespace winrt::TerminalApp::implementation
         bool _MovePane(const Microsoft::Terminal::Settings::Model::MovePaneArgs args);
         bool _MoveTab(winrt::com_ptr<TerminalTab> tab, const Microsoft::Terminal::Settings::Model::MoveTabArgs args);
 
+        void _adjustProcessPriorityGivenFocusState(const bool focused) const;
+
         template<typename F>
         bool _ApplyToActiveControls(F f)
         {
@@ -381,7 +383,7 @@ namespace winrt::TerminalApp::implementation
             return false;
         }
 
-        winrt::Microsoft::Terminal::Control::TermControl _GetActiveControl();
+        winrt::Microsoft::Terminal::Control::TermControl _GetActiveControl() const;
         std::optional<uint32_t> _GetFocusedTabIndex() const noexcept;
         std::optional<uint32_t> _GetTabIndex(const TerminalApp::TabBase& tab) const noexcept;
         TerminalApp::TabBase _GetFocusedTab() const noexcept;

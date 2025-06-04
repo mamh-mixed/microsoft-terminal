@@ -479,6 +479,8 @@ namespace winrt::Microsoft::Terminal::TerminalConnection::implementation
         DWORD exitCode{ 0 };
         GetExitCodeProcess(_piClient.hProcess, &exitCode);
 
+        _piClient.reset();
+
         // Signal the closing or failure of the process.
         // exitCode might be STILL_ACTIVE if a client has called FreeConsole() and
         // thus caused the tab to close, even though the CLI app is still running.
@@ -593,6 +595,11 @@ namespace winrt::Microsoft::Terminal::TerminalConnection::implementation
         {
             THROW_IF_FAILED(ConptyReparentPseudoConsole(_hPC.get(), reinterpret_cast<HWND>(newParent)));
         }
+    }
+
+    uint64_t ConptyConnection::RootProcessHandle()
+    {
+        return reinterpret_cast<uint64_t>(_piClient.hProcess);
     }
 
     void ConptyConnection::Close() noexcept
