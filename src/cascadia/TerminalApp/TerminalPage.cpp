@@ -4933,7 +4933,12 @@ namespace winrt::TerminalApp::implementation
 
         const auto count{ gsl::narrow_cast<DWORD>(it - processes.begin()) };
         auto ret = pfn(_hostingHwnd.value(), count, count ? processes.data() : nullptr);
-        LOG_IF_WIN32_BOOL_FALSE(ret);
+        TraceLoggingWrite(
+            g_hTerminalAppProvider,
+            "CalledNtUserQoSAPI",
+            TraceLoggingValue(reinterpret_cast<uintptr_t>(_hostingHwnd.value()), "hwnd"),
+            TraceLoggingValue(count),
+            TraceLoggingWinError((ret ? 0 : GetLastError()), "error"));
 #ifdef _DEBUG
         OutputDebugStringW(fmt::format(FMT_COMPILE(L"Submitted {} processes to SetAdditionalPowerThrottlingProcess; return={}\n"), count, ret).c_str());
 #endif
